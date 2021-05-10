@@ -71,7 +71,7 @@ def evaluate_policy(
     #         UserWarning,
     #     )
 
-    episode_rewards, episode_dips_below_0, episode_lengths = [], [], []
+    episode_rewards, episode_lows, episode_highs, episode_lengths = [], [], [], []
     not_reseted = True
     while len(episode_rewards) < n_eval_episodes:
         # Number of loops here might differ from true episodes
@@ -82,7 +82,8 @@ def evaluate_policy(
             not_reseted = False
         done, state = False, None
         episode_reward = 0.0
-        episode_dips = 0
+        episode_low = 0
+        episode_high = 0
         episode_length = 0
         while not done:
             action, state = model.predict(obs, state=state, deterministic=deterministic)
@@ -94,8 +95,8 @@ def evaluate_policy(
             if render:
                 env.render()
 
-            if obs[0][7] == 1:
-              episode_dips += 1
+            episode_low += obs[0][7]
+            episode_high += obs[0][9]
 
         if is_monitor_wrapped:
             # Do not trust "done" with episode endings.
@@ -111,14 +112,15 @@ def evaluate_policy(
         else:
             episode_rewards.append(episode_reward)
             episode_lengths.append(episode_length)
-            episode_dips_below_0.append(episode_dips)
+            episode_lows.append(episode_low)
+            episode_highs.append(episode_high)
 
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
     if reward_threshold is not None:
         assert mean_reward > reward_threshold, "Mean reward below threshold: " f"{mean_reward:.2f} < {reward_threshold:.2f}"
     if return_episode_rewards:
-        return episode_rewards, episode_lengths, episode_dips_below_0
+        return episode_rewards, episode_lengths, episode_lows, episode_highs
     return mean_reward, std_reward
 
 # User-defined function to pass to map()
@@ -184,7 +186,8 @@ class MyEvalCallback(EventCallback):
         self.evaluations_results = []
         self.evaluations_timesteps = []
         self.evaluations_length = []
-        self.evaluations_dips = []
+        self.evaluation_lows = []
+        self.evaluation_highs = []
         # For computing success rate
         self._is_success_buffer = []
         self.evaluations_successes = []
@@ -227,7 +230,7 @@ class MyEvalCallback(EventCallback):
             # Reset success rate buffer
             self._is_success_buffer = []
 
-            episode_rewards, episode_lengths, episode_dips = evaluate_policy(
+            episode_rewards, episode_lengths, episode_lows, episode_highs = evaluate_policy(
                 self.model,
                 self.eval_env,
                 n_eval_episodes=self.n_eval_episodes,
@@ -242,7 +245,8 @@ class MyEvalCallback(EventCallback):
                 self.evaluations_timesteps.append(self.num_timesteps)
                 self.evaluations_results.append(episode_rewards)
                 self.evaluations_length.append(episode_lengths)
-                self.evaluations_dips.append(episode_dips)
+                self.evaluation_lows.append(episode_lows)
+                self.evaluation_highs.append(episode_highs)
 
                 kwargs = {}
                 # Save success log if present
@@ -255,7 +259,8 @@ class MyEvalCallback(EventCallback):
                     timesteps=self.evaluations_timesteps,
                     results=self.evaluations_results,
                     ep_lengths=self.evaluations_length,
-                    dips=self.evaluations_dips,
+                    lows=self.evaluation_lows,
+                    highs=self.evaluation_highs,
                     **kwargs,
                 )
                 # np.save(self.log_path + "_dips", self.evaluations_dips)
@@ -267,7 +272,8 @@ class MyEvalCallback(EventCallback):
             if self.verbose > 0:
                 print(f"Eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
                 print(f"Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}")
-                print(f"Episode dips: {episode_dips}")
+                print(f"Episode lows: {episode_lows}")
+                print(f"Episode highs: {episode_highs}")
             # Add to current Logger
             self.logger.record("eval/mean_reward", float(mean_reward))
             self.logger.record("eval/mean_ep_length", mean_ep_length)
