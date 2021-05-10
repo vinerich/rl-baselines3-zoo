@@ -13,8 +13,9 @@ class Constants:
 
 
 class ZincCoatingBase():
-    def __init__(self, coating_reward_time_offset=0, use_randomized_coils=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
-        self.use_randomized_coils = use_randomized_coils
+    def __init__(self, coating_reward_time_offset=0, use_randomized_coil_targets=False, use_randomized_coil_characteristics=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
+        self.use_randomized_coil_targets = use_randomized_coil_targets
+        self.use_randomized_coil_characteristics = use_randomized_coil_characteristics
         self.use_changing_coil_speed = use_changing_coil_speed
         self.use_randomized_coil_lengths = use_randomized_coil_lengths
         self.coating_reward_time_offset = np.max(
@@ -78,14 +79,14 @@ class ZincCoatingBase():
 
     def getNewCoil(self):
         coil_type = 0
-        if(self.use_randomized_coils):
+        if(self.use_randomized_coil_targets or self.use_randomized_coil_characteristics):
             coil_type = np.random.randint(30)
 
         coil_length = 100
         if(self.use_randomized_coil_lengths):
             coil_length = np.random.randint(50, 150)
 
-        return Coil(type=coil_type, length=coil_length)
+        return Coil(type=coil_type, length=coil_length, rand_target=self.use_randomized_coil_targets, rand_characteristic=self.use_randomized_coil_characteristics)
 
     def _get_reward(self, zinc_coating_diff):
         if zinc_coating_diff < 0:

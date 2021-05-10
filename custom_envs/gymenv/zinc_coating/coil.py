@@ -5,7 +5,7 @@ class Coil():
     """A class to represent a coil.
     """
 
-    def __init__(self, type=0, length=100):
+    def __init__(self, type=0, length=100, rand_target=False, rand_characteristic=False):
         """Create a new coil with given type and length.
 
         Args:
@@ -20,6 +20,8 @@ class Coil():
         self.max_length = length
         self.length = length
         self.started = False
+        self.rand_target = rand_target
+        self.rand_characteristic = rand_characteristic
 
     def start(self, timestep, speed):
         """Starts the unrolling of this coil.
@@ -61,7 +63,10 @@ class Coil():
         Returns:
             int: Coating target. Varies between 40 and 60.
         """
-        return math.floor(self.type / 3) * 2 + 40
+        if(self.rand_target):
+            return math.floor(self.type / 3) * 2 + 40.0
+        else:
+            return 40.0
 
     def getZincCoatingCharacteristic(self):
         """Gets the zinc coating characteristic of this coil type. Coil types vary in there zinc bond.
@@ -69,4 +74,7 @@ class Coil():
         Returns:
             float: Coating characteristic. How much zinc bonds with the coil. Varies between 0.6 and 1.0.
         """
-        return 1.0 - self.type % 3 * 0.2
+        if(self.rand_characteristic):
+            return 1.0 - self.type % 3 * 0.2
+        else:
+            return 1.0
