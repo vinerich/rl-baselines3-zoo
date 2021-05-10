@@ -94,7 +94,7 @@ def evaluate_policy(
             if render:
                 env.render()
 
-            if obs[0][8] == 1:
+            if obs[0][7] == 1:
               episode_dips += 1
 
         if is_monitor_wrapped:
