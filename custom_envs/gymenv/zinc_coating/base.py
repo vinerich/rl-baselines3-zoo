@@ -13,8 +13,7 @@ class Constants:
 
 
 class ZincCoatingBase():
-    def __init__(self, seed=420, coating_reward_time_offset=0, use_randomized_coils=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
-        np.random.seed(seed)
+    def __init__(self, coating_reward_time_offset=0, use_randomized_coils=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
         self.use_randomized_coils = use_randomized_coils
         self.use_changing_coil_speed = use_changing_coil_speed
         self.use_randomized_coil_lengths = use_randomized_coil_lengths
@@ -24,6 +23,13 @@ class ZincCoatingBase():
 
         self.nozzle = Nozzle()
         self.zinc_bath = ZincBath()
+
+    def seed(self, seed=None):
+        if seed is None:
+            seed = np.random.randint(0, 10000000)
+        np.random.seed(seed)
+
+        print("Seed to use: ", seed)
 
     def reset(self):
         self.timestep = 0

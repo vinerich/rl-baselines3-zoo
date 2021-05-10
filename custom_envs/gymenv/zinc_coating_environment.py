@@ -9,7 +9,7 @@ from .zinc_coating.base import ZincCoatingBase as base
 class ZincCoatingV0(gym.Env):
     """Simple continous zinc coating environment"""
 
-    def __init__(self, steps_per_episode=5000, seed=420, coating_reward_time_offset=0, use_randomized_coils=True, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
+    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, use_randomized_coils=True, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
         super(ZincCoatingV0, self).__init__()
 
         self.steps_per_episode = steps_per_episode
@@ -17,8 +17,15 @@ class ZincCoatingV0(gym.Env):
             np.array([0]), np.array([700]), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=0, high=1, shape=(70,), dtype=np.float32)
-        self.base = base(seed, coating_reward_time_offset, use_randomized_coils,
+        self.base = base(coating_reward_time_offset, use_randomized_coils,
                          use_randomized_coil_lengths, use_changing_coil_speed)
+        self.seed()
+
+    def seed(self, seed=None):
+        if seed is None:
+            seed = np.random.randint(0, 10000000)
+        self.base.seed(seed)
+        return [seed]
 
     def step(self, nozzle_pressure):
         self.current_step += 1
