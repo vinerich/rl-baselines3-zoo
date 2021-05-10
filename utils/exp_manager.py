@@ -24,7 +24,7 @@ from sb3_contrib.common.vec_env import AsyncEval
 # For using HER with GoalEnv
 from stable_baselines3 import HerReplayBuffer  # noqa: F401
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from stable_baselines3.common.preprocessing import is_image_space, is_image_space_channels_first
@@ -39,6 +39,8 @@ from stable_baselines3.common.vec_env import (
     VecTransposeImage,
     is_vecenv_wrapped,
 )
+
+from .my_eval_callback import MyEvalCallback
 
 # For custom activation fn
 from torch import nn as nn  # noqa: F401
@@ -450,7 +452,7 @@ class ExperimentManager:
                 print("Creating test environment")
 
             save_vec_normalize = SaveVecNormalizeCallback(save_freq=1, save_path=self.params_path)
-            eval_callback = EvalCallback(
+            eval_callback = MyEvalCallback(
                 self.create_envs(self.n_eval_envs, eval_env=True),
                 callback_on_new_best=save_vec_normalize,
                 best_model_save_path=self.save_path,

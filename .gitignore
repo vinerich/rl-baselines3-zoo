@@ -18,3 +18,5 @@ runs
 hub
 *.mp4
 *.json
+
+.venv

@@ -36,6 +36,20 @@ LunarLanderContinuous-v2:
   learning_starts: 10000
   policy_kwargs: "dict(net_arch=[400, 300])"
 
+zinc-coating-v0:
+  n_timesteps: !!float 3e6
+  policy: 'MlpPolicy'
+  learning_rate: lin_7.3e-5
+  buffer_size: 1000000
+  batch_size: 256
+  ent_coef: 'auto'
+  gamma: 0.995
+  tau: 0.02
+  train_freq: 16
+  gradient_steps: 1
+  learning_starts: 1000
+  policy_kwargs: "dict(net_arch=[400, 300])"
+
 
 # Tuned
 BipedalWalker-v3:

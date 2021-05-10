@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+stable-baselines3 = {version = ">=1.0", extras = ["docs", "extra", "tests"]}
+box2d-py = "*"
+pybullet = "*"
+gym-minigrid = "*"
+scikit-optimize = "*"
+optuna = "*"
+pytablewriter = "*"
+seaborn = "*"
+sb3-contrib = ">=1.0"
+PyYAML = ">=5.1"
+pillow = "*"
+torch = "==1.8.1+cu102"
+torchvision = "==0.9.1+cu102"
+torchaudio = "===0.8.1"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"

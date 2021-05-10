@@ -30,9 +30,9 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     vf_coef = trial.suggest_uniform("vf_coef", 0, 1)
     net_arch = trial.suggest_categorical("net_arch", ["small", "medium"])
     # Uncomment for gSDE (continuous actions)
-    # log_std_init = trial.suggest_uniform("log_std_init", -4, 1)
+    log_std_init = trial.suggest_uniform("log_std_init", -4, 1)
     # Uncomment for gSDE (continuous action)
-    # sde_sample_freq = trial.suggest_categorical("sde_sample_freq", [-1, 8, 16, 32, 64, 128, 256])
+    sde_sample_freq = trial.suggest_categorical("sde_sample_freq", [-1, 8, 16, 32, 64, 128, 256])
     # Orthogonal initialization
     ortho_init = False
     # ortho_init = trial.suggest_categorical('ortho_init', [False, True])
