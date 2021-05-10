@@ -9,7 +9,7 @@ from .zinc_coating.base import ZincCoatingBase as base
 class ZincCoatingV0(gym.Env):
     """Simple continous zinc coating environment"""
 
-    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, use_randomized_coils=True, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
+    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, use_randomized_coils=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
         super(ZincCoatingV0, self).__init__()
 
         self.steps_per_episode = steps_per_episode
