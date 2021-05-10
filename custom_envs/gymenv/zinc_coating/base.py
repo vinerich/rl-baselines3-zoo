@@ -20,7 +20,7 @@ class ZincCoatingBase():
         self.use_randomized_coil_lengths = use_randomized_coil_lengths
         self.coating_reward_time_offset = np.max(
             [0, coating_reward_time_offset])
-        self.reward_queue = queue.SimpleQueue()
+        self.reward_queue = queue.Queue()
 
         self.nozzle = Nozzle()
         self.zinc_bath = ZincBath()
@@ -29,7 +29,7 @@ class ZincCoatingBase():
         self.timestep = 0
         self.coil_speed = 160 / 60
 
-        self.reward_queue = queue.SimpleQueue()
+        self.reward_queue = queue.Queue()
         for i in range(self.coating_reward_time_offset):
             self.reward_queue.put(0)
 
