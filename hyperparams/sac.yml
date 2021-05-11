@@ -47,7 +47,7 @@ zinc-coating-v0:
   tau: 0.02
   train_freq: 16
   gradient_steps: 1
-  learning_starts: 1000
+  learning_starts: 50000
   policy_kwargs: "dict(net_arch=[400, 300])"
 
 

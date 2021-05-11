@@ -36,6 +36,11 @@ class ZincCoatingBase():
         self.timestep = 0
         self.coil_speed = 160 / 60
 
+        if(self.use_changing_coil_speed):
+            self.coil_speed_target = np.random.randint(80, 200) / 60
+        else:
+            self.coil_speed_target = self.coil_speed
+
         self.reward_queue = queue.Queue()
         for i in range(self.coating_reward_time_offset):
             self.reward_queue.put(0)
@@ -57,6 +62,15 @@ class ZincCoatingBase():
     def step(self, new_pressure):
         self.timestep += Constants.TIMESTEP
         self.nozzle.setPressure(new_pressure)
+
+        if(self.use_changing_coil_speed):
+            if(self.coil_speed_target < self.coil_speed):
+                self.coil_speed -= 0.2/60
+            else:
+                self.coil_speed += 0.2/60
+
+            if(np.absolute(self.coil_speed - self.coil_speed_target) < 0.01):
+                self.coil_speed_target = np.random.randint(80, 200) / 60
 
         coil_length = self.current_coil.getLength(
             self.timestep, self.coil_speed)
