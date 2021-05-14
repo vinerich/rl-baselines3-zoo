@@ -36,7 +36,6 @@ class MPO(OffPolicyAlgorithm):
     :param dual_constraint: (float) hard constraint of the dual formulation in the E-step
     :param kl_mean_constraint: (float) hard constraint of the mean in the M-step
     :param kl_var_constraint: (float) hard constraint of the covariance in the M-step
-    :param kl_constraint: (float) hard constraint of the ... in the M-step
     :param alpha: (float) scaling factor of the lagrangian multiplier in the M-step
     :param lagrange_iterations: (int) number of optimization steps of the Lagrangian
     :param action_samples: (int) number of additional actions
@@ -71,12 +70,11 @@ class MPO(OffPolicyAlgorithm):
         buffer_size: int = int(1e6),
         learning_starts: int = 5000,
         batch_size: int = 256,
-        tau: float = 0.005,
+        tau: float = 0.02,
         gamma: float = 0.99,
         dual_constraint: float = 0.1,
         kl_mean_constraint: float = 0.1,
         kl_var_constraint: float = 1e-3,
-        kl_constraint: float = 1e-3,
         alpha: float = 10,
         lagrange_iterations: int = 5,
         action_samples: int = 64,
@@ -84,7 +82,7 @@ class MPO(OffPolicyAlgorithm):
         gradient_steps: int = 4,
         action_noise: Optional[ActionNoise] = None,
         optimize_memory_usage: bool = False,
-        target_update_interval: int = 1,
+        target_update_interval: int = 2,
         tensorboard_log: Optional[str] = None,
         create_eval_env: bool = False,
         policy_kwargs: Dict[str, Any] = None,
@@ -123,18 +121,17 @@ class MPO(OffPolicyAlgorithm):
         self.ε_dual = dual_constraint  # hard constraint for the KL
         self.ε_kl_μ = kl_mean_constraint  # hard constraint for the KL
         self.ε_kl_Σ = kl_var_constraint  # hard constraint for the KL
-        self.ε_kl = kl_constraint  # hard constraint for the KL
         self.lagrange_iterations = lagrange_iterations
         self.action_samples = action_samples
 
         if seed is not None:
-          np.random.seed(seed)
+            np.random.seed(seed)
 
         self.η = np.random.rand()
         self.η_kl_μ = 0.0
         self.η_kl_Σ = 0.0
         self.η_kl = 0.0
-        
+
         self.loss_function = nn.SmoothL1Loss()
 
         if _init_setup_model:
@@ -149,7 +146,7 @@ class MPO(OffPolicyAlgorithm):
         self.actor_target = self.policy.actor_target
         self.critic = self.policy.critic
         self.critic_target = self.policy.critic_target
-        
+
         self.features_dim = self.actor.features_dim
         self.action_dim = self.actor.action_dim
 
@@ -177,88 +174,88 @@ class MPO(OffPolicyAlgorithm):
             sampled_next_actions_expected_q = get_min_critic_tensor(self.critic_target.forward(
                 expanded_next_observations.reshape(-1, self.features_dim),
                 sampled_next_actions.reshape(-1, self.action_dim)
-              )).reshape(batch_size, self.action_samples).mean(dim=1)
-            
+            )).reshape(batch_size, self.action_samples).mean(dim=1)
+
             # Compute total expected return
             sampled_expected_return = replay_data.rewards + self.gamma * sampled_next_actions_expected_q
 
             # Optimize the critic
             critic_q = get_min_critic_tensor(self.critic.forward(replay_data.observations, replay_data.actions)).squeeze()
             critic_loss = self.loss_function(sampled_expected_return, critic_q)
-            
+
             self.critic.optimizer.zero_grad()
             critic_loss.backward()
             self.critic.optimizer.step()
 
             critic_losses.append(critic_loss.item())
             mean_est_q.append(critic_q.abs().mean().item())
-            
+
             # Sample additional actions for E-Step
             with th.no_grad():
-              target_action_distribution, target_mean_actions, target_cholesky = self.actor_target.get_action_dist(replay_data.observations)
-              sampled_actions = target_action_distribution.sample((self.action_samples,))
+                target_action_distribution, target_mean_actions, target_cholesky = self.actor_target.get_action_dist(
+                    replay_data.observations)
+                sampled_actions = target_action_distribution.sample((self.action_samples,))
             #   for _ in range(self.action_samples):
             #     sampled_action = target_action_distribution.sample()
             #     sampled_actions.append(sampled_action)
             #   sampled_actions = th.tensor(sampled_actions).to(self.device)
 
-              # Compute q values for the samples
-              expanded_observations = replay_data.observations[None, ...].expand(self.action_samples, -1, -1)
-              sampled_actions_expected_q = get_min_critic_tensor(self.critic_target.forward(
-                  expanded_observations.reshape(-1, self.features_dim),
-                  sampled_actions.reshape(-1, self.action_dim)
+                # Compute q values for the samples
+                expanded_observations = replay_data.observations[None, ...].expand(self.action_samples, -1, -1)
+                sampled_actions_expected_q = get_min_critic_tensor(self.critic_target.forward(
+                    expanded_observations.reshape(-1, self.features_dim),
+                    sampled_actions.reshape(-1, self.action_dim)
                 )).reshape(self.action_samples, batch_size)
-              sampled_actions_expected_q_np = sampled_actions_expected_q.cpu().numpy()
-            
+                sampled_actions_expected_q_np = sampled_actions_expected_q.cpu().numpy()
+
             # Define dual function
             def dual(η):
-              max_q = np.max(sampled_actions_expected_q_np, 0)
-              return η * self.ε_dual + np.mean(max_q) \
-                + η * np.mean(np.log(np.mean(np.exp((sampled_actions_expected_q_np - max_q) / η), axis=0)))
-                
+                max_q = np.max(sampled_actions_expected_q_np, 0)
+                return η * self.ε_dual + np.mean(max_q) \
+                    + η * np.mean(np.log(np.mean(np.exp((sampled_actions_expected_q_np - max_q) / η), axis=0)))
+
             bounds = [(1e-6, None)]
             res = minimize(dual, np.array([self.η]), method='SLSQP', bounds=bounds)
             self.η = res.x[0]
-            
+
             qij = th.softmax(sampled_actions_expected_q / self.η, dim=0)
-            
+
             # M-Step
             for _ in range(self.lagrange_iterations):
-              action_distribution, mean_actions, cholesky = self.actor.get_action_dist(replay_data.observations)
-              π1 = MultivariateNormal(mean_actions, scale_tril=target_cholesky)
-              π2 = MultivariateNormal(target_mean_actions, scale_tril=cholesky)
-              loss_p = th.mean(qij * (
-                π1.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
-                + π2.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
+                _, mean_actions, cholesky = self.actor.get_action_dist(replay_data.observations)
+                π1 = MultivariateNormal(mean_actions, scale_tril=target_cholesky)
+                π2 = MultivariateNormal(target_mean_actions, scale_tril=cholesky)
+                loss_p = th.mean(qij * (
+                    π1.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
+                    + π2.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
                 )
-              )
-              mean_loss_p.append((-loss_p).item())
-              
-              kl_μ, kl_Σ = gaussian_kl(
-                μi=target_mean_actions, μ=mean_actions,
-                Ai=target_cholesky, A=cholesky
-              )
-              max_kl_μ.append(kl_μ.item())
-              max_kl_Σ.append(kl_Σ.item())
-              
-              self.η_kl_μ -= self.α * (self.ε_kl_μ - kl_μ).detach().item()
-              self.η_kl_Σ -= self.α * (self.ε_kl_Σ - kl_Σ).detach().item()
-              
-              
-              if self.η_kl_μ < 0.0:
-                self.η_kl_μ = 0.0
-              if self.η_kl_Σ < 0.0:
-                self.η_kl_Σ = 0.0
-                
-              self.actor.optimizer.zero_grad()
-              actor_loss = -(loss_p + self.η_kl_μ * (self.ε_kl_μ - kl_μ)
-                                    + self.η_kl_Σ * (self.ε_kl_Σ - kl_Σ)
-                            )
-              actor_loss.backward()
-              clip_grad_norm_(self.actor.parameters(), 0.1)
-              self.actor.optimizer.step()
-            
-              actor_losses.append(actor_loss.item())
+                )
+                mean_loss_p.append((-loss_p).item())
+
+                kl_μ, kl_Σ = gaussian_kl(
+                    μi=target_mean_actions, μ=mean_actions,
+                    Ai=target_cholesky, A=cholesky
+                )
+                max_kl_μ.append(kl_μ.item())
+                max_kl_Σ.append(kl_Σ.item())
+
+                self.η_kl_μ -= self.α * (self.ε_kl_μ - kl_μ).detach().item()
+                self.η_kl_Σ -= self.α * (self.ε_kl_Σ - kl_Σ).detach().item()
+
+                if self.η_kl_μ < 0.0:
+                    self.η_kl_μ = 0.0
+                if self.η_kl_Σ < 0.0:
+                    self.η_kl_Σ = 0.0
+
+                self.actor.optimizer.zero_grad()
+                actor_loss = -(loss_p + self.η_kl_μ * (self.ε_kl_μ - kl_μ)
+                                      + self.η_kl_Σ * (self.ε_kl_Σ - kl_Σ)
+                               )
+                actor_loss.backward()
+                clip_grad_norm_(self.actor.parameters(), 0.1)
+                self.actor.optimizer.step()
+
+                actor_losses.append(actor_loss.item())
 
             if gradient_step % self.target_update_interval == 0:
                 polyak_update(self.critic.parameters(), self.critic_target.parameters(), self.tau)
@@ -299,15 +296,18 @@ class MPO(OffPolicyAlgorithm):
 
     def _get_torch_save_params(self) -> Tuple[List[str], List[str]]:
         state_dicts = ["policy", "actor.optimizer", "critic.optimizer"]
-        saved_pytorch_variables = [ ]
+        saved_pytorch_variables = []
         # saved_pytorch_variables = ["log_ent_coef"]
         return state_dicts, saved_pytorch_variables
+
 
 def bt(m):
     return m.transpose(dim0=-2, dim1=-1)
 
+
 def btr(m):
     return m.diagonal(dim1=-2, dim2=-1).sum(-1)
+
 
 def gaussian_kl(μi, μ, Ai, A):
     """
@@ -333,5 +333,6 @@ def gaussian_kl(μi, μ, Ai, A):
     C_Σ = 0.5 * th.mean(inner_Σ)
     return C_μ, C_Σ
 
+
 def get_min_critic_tensor(critics):
-  return th.min(th.cat(critics, dim=1), dim=1, keepdim=True).values
+    return th.min(th.cat(critics, dim=1), dim=1, keepdim=True).values
