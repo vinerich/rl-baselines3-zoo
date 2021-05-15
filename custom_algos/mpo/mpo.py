@@ -177,7 +177,7 @@ class MPO(OffPolicyAlgorithm):
             )).reshape(batch_size, self.action_samples).mean(dim=1)
 
             # Compute total expected return
-            sampled_expected_return = replay_data.rewards + self.gamma * sampled_next_actions_expected_q
+            sampled_expected_return = replay_data.rewards.squeeze() + self.gamma * sampled_next_actions_expected_q
 
             # Optimize the critic
             critic_q = get_min_critic_tensor(self.critic.forward(replay_data.observations, replay_data.actions)).squeeze()
