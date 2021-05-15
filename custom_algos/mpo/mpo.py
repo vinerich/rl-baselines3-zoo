@@ -270,10 +270,10 @@ class MPO(OffPolicyAlgorithm):
         logger.record("train/actor_loss", np.mean(actor_losses))
         logger.record("train/critic_loss", np.mean(critic_losses))
         logger.record("train/actor_policy_loss", np.mean(mean_loss_p))
-        logger.record("train/max_kl_μ", np.max(max_kl_μ))
-        logger.record("train/mean_kl_μ", np.mean(max_kl_μ))
-        logger.record("train/max_kl_Σ", np.max(max_kl_Σ))
-        logger.record("train/mean_kl_Σ", np.mean(max_kl_Σ))
+        logger.record("train/max_kl_mean", np.max(max_kl_μ))
+        logger.record("train/mean_kl_mean", np.mean(max_kl_μ))
+        logger.record("train/max_kl_std", np.max(max_kl_Σ))
+        logger.record("train/mean_kl_std", np.mean(max_kl_Σ))
 
     def learn(
         self,
