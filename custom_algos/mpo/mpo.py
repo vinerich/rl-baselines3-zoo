@@ -234,8 +234,8 @@ class MPO(OffPolicyAlgorithm):
                 mean_loss_p.append((-loss_p).item())
 
                 kl_μ, kl_Σ = gaussian_kl(
-                    μi=target_action_mean, μ=action_mean,
-                    Ai=target_action_cholesky, A=action_cholesky
+                    μ_target=target_action_mean, μ=action_mean,
+                    A_target=target_action_cholesky, A=action_cholesky
                 )
                 max_kl_μ.append(kl_μ.item())
                 max_kl_Σ.append(kl_Σ.item())
