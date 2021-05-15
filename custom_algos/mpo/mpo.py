@@ -216,10 +216,14 @@ class MPO(OffPolicyAlgorithm):
                     + η * np.mean(np.log(np.mean(np.exp((target_sampled_actions_expected_q_np - max_q) / η), axis=0)))
 
             bounds = [(1e-6, None)]
-            if(self.η < 1e-6):
-                self.η = 1e-6
-            res = minimize(dual, np.array([self.η]), method='SLSQP', bounds=bounds)
-            self.η = res.x[0]
+            try:
+                res = minimize(dual, np.array([self.η]), method='SLSQP', bounds=bounds)
+                self.η = res.x[0]
+            except:
+                print("Dual function minimization threw an error")
+                self.η = np.random.rand()
+                res = minimize(dual, np.array([self.η]), method='SLSQP', bounds=bounds)
+                self.η = res.x[0]
 
             qij = th.softmax(target_sampled_actions_expected_q / self.η, dim=0)
 
