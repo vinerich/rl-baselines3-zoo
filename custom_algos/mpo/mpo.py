@@ -216,6 +216,8 @@ class MPO(OffPolicyAlgorithm):
                     + η * np.mean(np.log(np.mean(np.exp((target_sampled_actions_expected_q_np - max_q) / η), axis=0)))
 
             bounds = [(1e-6, None)]
+            if(self.η < 1e-6):
+                self.η = 1e-6
             res = minimize(dual, np.array([self.η]), method='SLSQP', bounds=bounds)
             self.η = res.x[0]
 
@@ -224,8 +226,8 @@ class MPO(OffPolicyAlgorithm):
             # M-Step
             for _ in range(self.lagrange_iterations):
                 action_mean, action_cholesky, _ = self.actor.get_action_dist_params(replay_data.observations)
-                π1 = MultivariateNormal(action_mean, scale_tril=target_action_cholesky)
-                π2 = MultivariateNormal(target_action_mean, scale_tril=action_cholesky)
+                π1 = MultivariateNormal(action_mean, scale_tril=action_cholesky)
+                π2 = MultivariateNormal(target_action_mean, scale_tril=target_action_cholesky)
                 loss_p = th.mean(qij * (
                     π1.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
                     + π2.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
@@ -267,6 +269,11 @@ class MPO(OffPolicyAlgorithm):
         logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         logger.record("train/actor_loss", np.mean(actor_losses))
         logger.record("train/critic_loss", np.mean(critic_losses))
+        logger.record("train/actor_policy_loss", np.mean(mean_loss_p))
+        logger.record("train/max_kl_μ", np.max(max_kl_μ))
+        logger.record("train/mean_kl_μ", np.mean(max_kl_μ))
+        logger.record("train/max_kl_Σ", np.max(max_kl_Σ))
+        logger.record("train/mean_kl_Σ", np.mean(max_kl_Σ))
 
     def learn(
         self,
