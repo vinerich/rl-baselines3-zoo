@@ -259,6 +259,7 @@ class MPO(OffPolicyAlgorithm):
                 actor_losses.append(actor_loss.item())
 
             if gradient_step % self.target_update_interval == 0:
+                polyak_update(self.actor.parameters(), self.actor_target.parameters(), self.tau)
                 polyak_update(self.critic.parameters(), self.critic_target.parameters(), self.tau)
 
         self._n_updates += gradient_steps
@@ -310,7 +311,7 @@ def btr(m):
     return m.diagonal(dim1=-2, dim2=-1).sum(-1)
 
 
-def gaussian_kl(μi, μ, Ai, A):
+def gaussian_kl(μ_target, μ, A_target, A):
     """
     decoupled KL between two multivariate gaussian distribution
     C_μ = KL(f(x|μi,Σi)||f(x|μ,Σi))
@@ -322,14 +323,14 @@ def gaussian_kl(μi, μ, Ai, A):
     :return: C_μ, C_Σ: mean and covariance terms of the KL
     """
     n = A.size(-1)
-    μi = μi.unsqueeze(-1)  # (B, n, 1)
+    μ_target = μ_target.unsqueeze(-1)  # (B, n, 1)
     μ = μ.unsqueeze(-1)  # (B, n, 1)
-    Σi = Ai @ bt(Ai)  # (B, n, n)
+    Σ_target = A_target @ bt(A_target)  # (B, n, n)
     Σ = A @ bt(A)  # (B, n, n)
-    Σi_inv = Σi.inverse()  # (B, n, n)
+    Σ_target_inv = Σ_target.inverse()  # (B, n, n)
     Σ_inv = Σ.inverse()  # (B, n, n)
-    inner_μ = ((μ - μi).transpose(-2, -1) @ Σi_inv @ (μ - μi)).squeeze()  # (B,)
-    inner_Σ = th.log(Σ.det() / Σi.det()) - n + btr(Σ_inv @ Σi)  # (B,)
+    inner_μ = ((μ - μ_target).transpose(-2, -1) @ Σ_target_inv @ (μ - μ_target)).squeeze()  # (B,)
+    inner_Σ = th.log(Σ.det() / Σ_target.det()) - n + btr(Σ_inv @ Σ_target)  # (B,)
     C_μ = 0.5 * th.mean(inner_μ)
     C_Σ = 0.5 * th.mean(inner_Σ)
     return C_μ, C_Σ
