@@ -110,8 +110,6 @@ class D3PG(OffPolicyAlgorithm):
         if seed is not None:
             np.random.seed(seed)
 
-        self.loss_function = nn.MSELoss()
-
         if _init_setup_model:
             self._setup_model()
 
@@ -148,7 +146,8 @@ class D3PG(OffPolicyAlgorithm):
                 target_next_actions_q, _ = self.critic_target.forward(
                     replay_data.next_observations, target_next_actions, self.action_dist_samples)
                 target_next_actions_q = target_next_actions_q.transpose(1, 2)
-            target_expected_Q = replay_data.rewards.unsqueeze(-1) + self.gamma * target_next_actions_q
+                target_expected_Q = replay_data.rewards.unsqueeze(-1) + \
+                    (1 - replay_data.dones.unsqueeze(-1)) * self.gamma * target_next_actions_q
 
             expected_Q, taus = self.critic.forward(replay_data.observations, replay_data.actions, self.action_dist_samples)
 
@@ -159,12 +158,11 @@ class D3PG(OffPolicyAlgorithm):
 
             critic_loss = (quantil_1.sum(dim=1).mean(dim=1, keepdim=True) * replay_data.weights).mean()
 
+            # Optimize critic
             self.critic.optimizer.zero_grad()
             critic_loss.backward()
             clip_grad_norm_(self.critic.parameters(), 1)
             self.critic.optimizer.step()
-
-            critic_losses.append(critic_loss.item())
 
             # Actor update
             actions = self.actor.forward(replay_data.observations)
@@ -232,3 +230,16 @@ def calculate_huber_loss(td_errors, k=1.0):
     loss = th.where(td_errors.abs() <= k, 0.5 * td_errors.pow(2), k * (td_errors.abs() - 0.5 * k))
     assert loss.shape == (td_errors.shape[0], 32, 32), "huber loss has wrong shape"
     return loss
+
+
+# def get_min_qValues(critic_pairs):
+#     critics = [pair[0] for pair in critic_pairs]
+#     return th.min(th.cat(critics, dim=1), dim=1, keepdim=True).values
+
+
+def get_huber_loss(target_q, q, taus, weights):
+    td_error = target_q - q
+    huber_1 = calculate_huber_loss(td_error, 1.0)
+    quantil_1 = abs(taus - (td_error.detach() < 0).float()) * huber_1 / 1.0
+
+    return (quantil_1.sum(dim=1).mean(dim=1, keepdim=True) * weights).mean()
