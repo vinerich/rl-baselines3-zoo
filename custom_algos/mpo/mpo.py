@@ -124,6 +124,8 @@ class MPO(OffPolicyAlgorithm):
         self.lagrange_iterations = lagrange_iterations
         self.action_samples = action_samples
 
+        self.critic_loss = nn.SmoothL1Loss()
+
         if seed is not None:
             np.random.seed(seed)
 
@@ -131,8 +133,6 @@ class MPO(OffPolicyAlgorithm):
         self.η_kl_μ = 0.0
         self.η_kl_Σ = 0.0
         self.η_kl = 0.0
-
-        self.loss_function = nn.SmoothL1Loss()
 
         if _init_setup_model:
             self._setup_model()
@@ -157,7 +157,7 @@ class MPO(OffPolicyAlgorithm):
         # Update learning rate according to lr schedule
         self._update_learning_rate(optimizers)
 
-        mean_loss_q, mean_loss_p, mean_loss_l, mean_est_q, max_kl_μ, max_kl_Σ, max_kl = [], [], [], [], [], [], []
+        mean_loss_q, mean_loss_p, mean_loss_l, max_kl_μ, max_kl_Σ, max_kl = [], [], [], [], [], []
         actor_losses, critic_losses = [], []
 
         for gradient_step in range(gradient_steps):
@@ -165,33 +165,34 @@ class MPO(OffPolicyAlgorithm):
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)
             batch_size = replay_data.observations.size(0)
 
-            # Sample "action_samples" num additional actions
-            target_next_action_mean, target_next_action_cholesky, _ = self.actor_target.get_action_dist_params(
-                replay_data.next_observations)
-            target_next_action_dist = MultivariateNormal(target_next_action_mean, scale_tril=target_next_action_cholesky)
-            target_sampled_next_actions = target_next_action_dist.sample((self.action_samples,)).transpose(0, 1)
+            with th.no_grad():
+                # Sample "action_samples" num additional actions
+                target_next_action_mean, target_next_action_cholesky, _ = self.actor_target.get_action_dist_params(
+                    replay_data.next_observations)
+                target_next_action_dist = MultivariateNormal(target_next_action_mean, scale_tril=target_next_action_cholesky)
+                target_sampled_next_actions = target_next_action_dist.sample((self.action_samples,)).transpose(0, 1)
 
-            # Compute mean of q values for the samples
-            # Expand next_observation to match self.action_samples
-            expanded_next_observations = replay_data.next_observations[:, None, :].expand(-1, self.action_samples, -1)
-            target_sampled_next_actions_expected_q = get_min_critic_tensor(self.critic_target.forward(
-                expanded_next_observations.reshape(-1, self.features_dim),
-                target_sampled_next_actions.reshape(-1, self.action_dim)
-            )).reshape(batch_size, self.action_samples).mean(dim=1)
+                # Compute mean of q values for the samples
+                # Expand next_observation to match self.action_samples
+                expanded_next_observations = replay_data.next_observations[:, None, :].expand(-1, self.action_samples, -1)
+                target_sampled_next_actions_expected_q = get_min_critic_tensor(self.critic_target.forward(
+                    expanded_next_observations.reshape(-1, self.features_dim),
+                    target_sampled_next_actions.reshape(-1, self.action_dim)
+                )).reshape(batch_size, self.action_samples).mean(dim=1)
 
-            # Compute total expected return
-            target_sampled_expected_return = replay_data.rewards.squeeze() + self.gamma * target_sampled_next_actions_expected_q
+                # Compute total expected return
+                target_sampled_expected_return = replay_data.rewards.squeeze() + (1 - replay_data.dones.squeeze()) * self.gamma * \
+                    target_sampled_next_actions_expected_q
 
             # Optimize the critic
-            critic_q = get_min_critic_tensor(self.critic.forward(replay_data.observations, replay_data.actions)).squeeze()
-            critic_loss = self.loss_function(target_sampled_expected_return, critic_q)
+            critic_qs = self.critic.forward(replay_data.observations, replay_data.actions)
+            critic_loss = 0.5 * sum([self.critic_loss(current_q.squeeze(), target_sampled_expected_return)
+                                    for current_q in critic_qs])
+            critic_losses.append(critic_loss.item())
 
             self.critic.optimizer.zero_grad()
             critic_loss.backward()
             self.critic.optimizer.step()
-
-            critic_losses.append(critic_loss.item())
-            mean_est_q.append(critic_q.abs().mean().item())
 
             # Sample additional actions for E-Step
             with th.no_grad():
@@ -250,14 +251,16 @@ class MPO(OffPolicyAlgorithm):
                     self.η_kl_Σ = 0.0
 
                 self.actor.optimizer.zero_grad()
-                actor_loss = -(loss_p + self.η_kl_μ * (self.ε_kl_μ - kl_μ)
-                                      + self.η_kl_Σ * (self.ε_kl_Σ - kl_Σ)
+                actor_loss = -(loss_p
+                               + self.η_kl_μ * (self.ε_kl_μ - kl_μ)
+                               + self.η_kl_Σ * (self.ε_kl_Σ - kl_Σ)
                                )
+                actor_losses.append(actor_loss.item())
+
+                # Optimize actor
                 actor_loss.backward()
                 clip_grad_norm_(self.actor.parameters(), 0.1)
                 self.actor.optimizer.step()
-
-                actor_losses.append(actor_loss.item())
 
             if gradient_step % self.target_update_interval == 0:
                 polyak_update(self.actor.parameters(), self.actor_target.parameters(), self.tau)
