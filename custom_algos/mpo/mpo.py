@@ -225,8 +225,8 @@ class MPO(OffPolicyAlgorithm):
             # M-Step
             for _ in range(self.lagrange_iterations):
                 action_mean, action_cholesky, _ = self.actor.get_action_dist_params(replay_data.observations)
-                π1 = MultivariateNormal(action_mean, scale_tril=action_cholesky)
-                π2 = MultivariateNormal(target_action_mean, scale_tril=target_action_cholesky)
+                π1 = MultivariateNormal(action_mean, scale_tril=target_action_cholesky)
+                π2 = MultivariateNormal(target_action_mean, scale_tril=action_cholesky)
                 loss_p = th.mean(qij * (
                     π1.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
                     + π2.expand((self.action_samples, batch_size)).log_prob(sampled_actions)
