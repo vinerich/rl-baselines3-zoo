@@ -1,10 +1,12 @@
 zinc-coating-v0:
   policy: 'MlpPolicy'
-  n_timesteps: !!float 2e6
+  n_timesteps: !!float 4e6
   learning_rate: lin_2.5e-4
   batch_size: 256
   train_freq: 64
-  gradient_steps: 1
-  target_update_interval: 1
+  gradient_steps: 4
+  target_update_interval: 4
   buffer_size: 500000
   learning_starts: 5000
+  noise_type: 'ornstein-uhlenbeck'
+  noise_std: 0.2
