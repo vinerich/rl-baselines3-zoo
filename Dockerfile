@@ -1,4 +1,7 @@
-FROM stablebaselines/stable-baselines3-cpu:1.1.0a5
+ARG PARENT_IMAGE
+ARG USE_GPU
+
+FROM $PARENT_IMAGE
 
 RUN apt-get -y update \
     && apt-get -y install \
