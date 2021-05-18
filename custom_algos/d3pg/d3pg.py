@@ -157,6 +157,7 @@ class D3PG(OffPolicyAlgorithm):
             quantil_1 = abs(taus - (td_error.detach() < 0).float()) * huber_1 / 1.0
 
             critic_loss = (quantil_1.sum(dim=1).mean(dim=1, keepdim=True) * replay_data.weights).mean()
+            critic_losses.append(critic_loss.item())
 
             # Optimize critic
             self.critic.optimizer.zero_grad()
