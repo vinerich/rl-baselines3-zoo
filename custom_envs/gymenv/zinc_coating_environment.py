@@ -9,7 +9,7 @@ from .zinc_coating.base import ZincCoatingBase as base
 class ZincCoatingV0(gym.Env):
     """Simple continous zinc coating environment"""
 
-    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, use_randomized_coil_targets=False, use_randomized_coil_characteristics=False, use_randomized_coil_lengths=False, use_changing_coil_speed=False):
+    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, random_coating_targets=False, random_coil_characteristics=False, random_coil_lengths=False, random_coil_speed=False, coating_dist_mean=0.0, coating_dist_std=0.0, coating_dist_reward=False):
         super(ZincCoatingV0, self).__init__()
 
         self.steps_per_episode = steps_per_episode
@@ -17,8 +17,16 @@ class ZincCoatingV0(gym.Env):
             np.array([0]), np.array([700]), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=0, high=1, shape=(70,), dtype=np.float32)
-        self.base = base(coating_reward_time_offset, use_randomized_coil_targets, use_randomized_coil_characteristics,
-                         use_randomized_coil_lengths, use_changing_coil_speed)
+        self.base = base(
+            coating_reward_time_offset=coating_reward_time_offset,
+            random_coating_targets=random_coating_targets,
+            random_coil_characteristics=random_coil_characteristics,
+            random_coil_lengths=random_coil_lengths,
+            random_coil_speed=random_coil_speed,
+            coating_dist_mean=coating_dist_mean,
+            coating_dist_std=coating_dist_std,
+            coating_dist_reward=coating_dist_reward,
+        )
         self.seed()
 
     def seed(self, seed=None):
@@ -52,7 +60,7 @@ class ZincCoatingV0(gym.Env):
         coating_delta = observation.zinc_coating - observation.current_coating_target
         return ((observation.coil_speed * 3 / 10),
                 (observation.current_coating_target - 40) / 20,
-                (observation.next_coating_target - 40)/20,
+                (observation.next_coating_target - 40) / 20,
                 (observation.coil_length / 100),
                 (observation.zinc_coating - 20) / 110,
                 (observation.nozzle_pressure / 700),
@@ -63,6 +71,6 @@ class ZincCoatingV0(gym.Env):
 
 
 def one_hot_encode(to_encode, discrete_states):
-    output = [0]*discrete_states
+    output = [0] * discrete_states
     output[to_encode] = 1
     return tuple(output)
