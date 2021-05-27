@@ -95,8 +95,8 @@ def evaluate_policy(
             if render:
                 env.render()
 
-            episode_low += obs[0][7]
-            episode_high += obs[0][9]
+            episode_low += 1 if reward == -100 else 0
+            episode_high += 1 if reward == -10 else 0
 
         if is_monitor_wrapped:
             # Do not trust "done" with episode endings.
@@ -125,8 +125,11 @@ def evaluate_policy(
 
 # User-defined function to pass to map()
 # function as the first argument
+
+
 def getLength(iterable):
     return len(iterable)
+
 
 class MyEvalCallback(EventCallback):
     """

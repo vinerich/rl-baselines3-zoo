@@ -8,13 +8,13 @@ class ZincBath():
     def __init__(self):
         """Create a new zinc bath.
         """
-        self.min = 120
-        self.max = 160
-        self.zinc_coating = 140
+        self.min = 130
+        self.max = 150
+        self.zinc_coating = np.random.rand() * 20 + 130
 
     def step(self):
         self.zinc_coating += np.random.rand() * 2 - 1  # [-1, 1)
-        self.zinc_coating = np.clip(self.zinc_coating, self.min, self.max)  # [120, 160]
+        self.zinc_coating = np.clip(self.zinc_coating, self.min, self.max)  # [130, 150]
 
     def getZincCoatingForCoil(self, coil_characteristic, current_speed):
         speed_characteristic = current_speed * 0.125 + 0.875

@@ -42,14 +42,13 @@ class ZincCoatingV0(gym.Env):
         else:
             self.done = False
 
-        observation, reward = self.base.step(nozzle_pressure[0])
-        transformed = self._transform_observation(observation)
+        observation, reward, zinc_coating_real = self.base.step(nozzle_pressure[0])
 
-        return self._transform_observation(observation), reward, self.done, {}
+        return self._transform_observation(observation), reward, self.done, {zinc_coating_real: zinc_coating_real}
 
     def reset(self):
         self.current_step = 0
-        observation, _ = self.base.reset()
+        observation, _, _ = self.base.reset()
 
         return self._transform_observation(observation)
 

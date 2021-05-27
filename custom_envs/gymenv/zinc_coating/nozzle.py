@@ -8,7 +8,7 @@ class Nozzle():
     def __init__(self, pressure=350):
         self.max_pressure = 700
         self.min_pressure = 0
-        self.pressure_to_zinc_scrub = 0.001
+        self.pressure_to_zinc_scrub = 0.00125
 
         self.setPressure(pressure)
 
