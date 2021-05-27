@@ -10,3 +10,4 @@ zinc-coating-v0:
   learning_starts: 5000
   noise_type: 'ornstein-uhlenbeck'
   noise_std: 0.3
+  tau: 0.005
