@@ -49,7 +49,7 @@ class Coil():
             return self.max_length
 
         time_passed = timestep - self.current_time
-        time_passed_in_seconds = time_passed/1000
+        time_passed_in_seconds = time_passed / 1000
         remaining_length = self.length - self.current_speed * time_passed_in_seconds
 
         self.current_speed = speed
@@ -64,7 +64,7 @@ class Coil():
             int: Coating target. Varies between 40 and 60.
         """
         if(self.rand_target):
-            return math.floor(self.type / 3) * 2 + 40.0
+            return math.floor(self.type / 3) * 2 + 40.0  # [40, 58]
         else:
             return 40.0
 
@@ -75,6 +75,6 @@ class Coil():
             float: Coating characteristic. How much zinc bonds with the coil. Varies between 0.6 and 1.0.
         """
         if(self.rand_characteristic):
-            return 1.0 - self.type % 3 * 0.2
+            return 1.0 - self.type % 3 * 0.2  # [0.6, 1.0]
         else:
             return 1.0
