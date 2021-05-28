@@ -57,7 +57,7 @@ class ZincCoatingV0(gym.Env):
 
     def _transform_observation(self, observation):
         coating_delta = observation.zinc_coating - observation.current_coating_target
-        return ((observation.coil_speed - 1, 3) / 2 ,
+        return ((observation.coil_speed - 1.3) / 2,
                 (observation.current_coating_target - 40) / 20,
                 (observation.next_coating_target - 40) / 20,
                 (observation.coil_length / 100),
