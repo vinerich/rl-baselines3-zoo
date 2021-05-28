@@ -20,13 +20,12 @@ class ZincCoatingBase():
         self.use_randomized_coil_lengths = random_coil_lengths
         self.coating_reward_time_offset = np.max(
             [0, coating_reward_time_offset])
-        self.coating_dist = np.random.normal(coating_dist_mean, coating_dist_std)
         self.coating_dist_mean = coating_dist_mean
         self.coating_dist_std = coating_dist_std
         self.coating_dist_reward = coating_dist_reward
         self.reward_queue = queue.Queue()
 
-        self.nozzle = Nozzle()
+        self.nozzle = Nozzle(np.random.randint(0, 700))
         self.zinc_bath = ZincBath()
 
     def seed(self, seed=None):
@@ -38,19 +37,20 @@ class ZincCoatingBase():
 
     def reset(self):
         self.timestep = 0
-        self.coil_speed = 160 / 60
+        self.coil_speed = 160 / 60  # 2,667
         self.coil_types = [0] * 30
 
         if(self.use_changing_coil_speed):
-            self.coil_speed_target = np.random.randint(80, 200) / 60
+            self.coil_speed = np.random.randint(80, 200) / 60  # [1,333, 3,333]
+            self.coil_speed_target = np.random.randint(80, 200) / 60  # [1,333, 3,333]
         else:
             self.coil_speed_target = self.coil_speed
 
         self.reward_queue = queue.Queue()
-        for i in range(self.coating_reward_time_offset):
+        for _ in range(self.coating_reward_time_offset):
             self.reward_queue.put(0)
 
-        self.nozzle = Nozzle()
+        self.nozzle = Nozzle(np.random.randint(0, 700))
         self.zinc_bath = ZincBath()
         self.zinc_bath.step()
 
