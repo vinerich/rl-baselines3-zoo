@@ -63,7 +63,7 @@ class ZincCoatingV0(gym.Env):
                 (observation.coil_length / 100),
                 (observation.zinc_coating - 8) / 172,
                 (observation.nozzle_pressure / 700),
-                (coating_delta + 100) / 200,
+                (coating_delta + 60) / 200,
                 (1 if coating_delta < 0 else 0),
                 (1 if coating_delta >= 0 and coating_delta <= 20 else 0),
                 (1 if coating_delta > 20 else 0)) + one_hot_encode(observation.current_coil_type, 30) + one_hot_encode(observation.next_coil_type, 30)
