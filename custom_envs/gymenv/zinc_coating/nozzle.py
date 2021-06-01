@@ -18,8 +18,8 @@ class Nozzle():
     def getPressure(self):
         return self.pressure
 
-    # [65, 170]
+    # [65, 210]
     # speed: [1,333, 3,333]
     def getZincCoating(self, zinc_coating, current_speed):
         speed_characteristic = current_speed * 0.1 + 0.87  # [1.0, 1.2]
-        return (1 - self.pressure_to_zinc_scrub * self.pressure) * zinc_coating * speed_characteristic  # [8, 204]
+        return (1 - self.pressure_to_zinc_scrub * self.pressure) * zinc_coating / speed_characteristic  # [8, 210]

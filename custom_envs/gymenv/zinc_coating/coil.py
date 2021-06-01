@@ -52,10 +52,12 @@ class Coil():
         time_passed_in_seconds = time_passed / 1000
         remaining_length = self.length - self.current_speed * time_passed_in_seconds
 
+        remaining_length_next = remaining_length - self.current_speed * time_passed_in_seconds
+
         self.current_speed = speed
         self.current_time = timestep
         self.length = remaining_length
-        return remaining_length
+        return remaining_length, True if remaining_length_next < 0 else False
 
     def getZincCoatingTarget(self):
         """Gets the zinc coating target of this coil type.

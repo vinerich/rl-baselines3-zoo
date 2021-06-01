@@ -1,9 +1,10 @@
 class Observation:
-    def __init__(self, timestep, coil_speed, current_coil_type, current_coating_target, next_coil_type, next_coating_target, coil_length, zinc_bath_coating, zinc_coating, nozzle_pressure):
+    def __init__(self, timestep, coil_speed, current_coil_type, current_coating_target, coil_switch_next_tick, next_coil_type, next_coating_target, coil_length, zinc_bath_coating, zinc_coating, nozzle_pressure):
         self.timestep = timestep
         self.coil_speed = coil_speed
         self.current_coil_type = current_coil_type
         self.current_coating_target = current_coating_target
+        self.coil_switch_next_tick = coil_switch_next_tick
         self.next_coil_type = next_coil_type
         self.next_coating_target = next_coating_target
         self.coil_length = coil_length

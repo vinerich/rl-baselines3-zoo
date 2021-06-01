@@ -16,7 +16,7 @@ class ZincCoatingV0(gym.Env):
         self.action_space = spaces.Box(
             np.array([0]), np.array([700]), dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=0, high=1, shape=(70,), dtype=np.float32)
+            low=0, high=1, shape=(71,), dtype=np.float32)
         self.base = base(
             coating_reward_time_offset=coating_reward_time_offset,
             random_coating_targets=random_coating_targets,
@@ -44,7 +44,7 @@ class ZincCoatingV0(gym.Env):
 
         observation, reward, zinc_coating_real = self.base.step(nozzle_pressure[0])
 
-        return self._transform_observation(observation), reward, self.done, {zinc_coating_real: zinc_coating_real}
+        return self._transform_observation(observation), reward, self.done, {"coating": zinc_coating_real}
 
     def reset(self):
         self.current_step = 0
@@ -58,12 +58,13 @@ class ZincCoatingV0(gym.Env):
     def _transform_observation(self, observation):
         coating_delta = observation.zinc_coating - observation.current_coating_target
         return ((observation.coil_speed - 1.3) / 2,
-                (observation.current_coating_target - 40) / 20,
-                (observation.next_coating_target - 40) / 20,
+                (observation.current_coating_target - 8) / 202,
+                (observation.next_coating_target - 8) / 202,
                 (observation.coil_length / 100),
-                (observation.zinc_coating - 8) / 172,
+                1.0 if observation.coil_switch_next_tick else 0.0,
+                (observation.zinc_coating - 8) / 202,
                 (observation.nozzle_pressure / 700),
-                (coating_delta + 60) / 200,
+                (coating_delta + 50) / 220,
                 (1 if coating_delta < 0 else 0),
                 (1 if coating_delta >= 0 and coating_delta <= 20 else 0),
                 (1 if coating_delta > 20 else 0)) + one_hot_encode(observation.current_coil_type, 30) + one_hot_encode(observation.next_coil_type, 30)

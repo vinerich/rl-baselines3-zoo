@@ -64,7 +64,7 @@ class ZincCoatingBase():
             zinc_bath_coating, self.coil_speed)
         zinc_coating_dist = self._apply_coating_dist(zinc_coating)
 
-        return Observation(self.timestep, self.coil_speed, self.current_coil.type, self.current_coil.getZincCoatingTarget(), self.next_coil.type, self.next_coil.getZincCoatingTarget(), self.current_coil.max_length, zinc_bath_coating, zinc_coating_dist, self.nozzle.getPressure()), 0, zinc_coating
+        return Observation(self.timestep, self.coil_speed, self.current_coil.type, self.current_coil.getZincCoatingTarget(), False, self.next_coil.type, self.next_coil.getZincCoatingTarget(), self.current_coil.max_length, zinc_bath_coating, zinc_coating_dist, self.nozzle.getPressure()), 0, zinc_coating
 
     def step(self, new_pressure):
         self.timestep += Constants.TIMESTEP
@@ -80,7 +80,7 @@ class ZincCoatingBase():
             if(np.absolute(self.coil_speed - self.coil_speed_target) < 0.01):
                 self.coil_speed_target = np.random.randint(80, 200) / 60
 
-        coil_length = self.current_coil.getLength(
+        coil_length, coil_switch_next_tick = self.current_coil.getLength(
             self.timestep, self.coil_speed)
         if(coil_length < 0):
             self.current_coil = self.next_coil
@@ -88,6 +88,7 @@ class ZincCoatingBase():
             self.next_coil = self.getNewCoil()
 
             coil_length = self.current_coil.max_length
+            coil_switch_next_tick = False
 
         zinc_bath_coating = self.zinc_bath.getZincCoatingForCoil(
             self.current_coil.getZincCoatingCharacteristic(), self.coil_speed)
@@ -103,7 +104,7 @@ class ZincCoatingBase():
         else:
             self.reward_queue.put(self._get_reward(zinc_coating_diff))
 
-        return Observation(self.timestep, self.coil_speed, self.current_coil.type, self.current_coil.getZincCoatingTarget(), self.next_coil.type, self.next_coil.getZincCoatingTarget(), coil_length, zinc_bath_coating, zinc_coating_dist, self.nozzle.getPressure()), self.reward_queue.get(), zinc_coating
+        return Observation(self.timestep, self.coil_speed, self.current_coil.type, self.current_coil.getZincCoatingTarget(), coil_switch_next_tick, self.next_coil.type, self.next_coil.getZincCoatingTarget(), coil_length, zinc_bath_coating, zinc_coating_dist, self.nozzle.getPressure()), self.reward_queue.get(), zinc_coating
 
     def getNewCoil(self):
         coil_type = 0
