@@ -22,7 +22,7 @@ parser.add_argument(
     default="results",
     type=str,
 )
-parser.add_argument("-max", "--max-timesteps", help="Max number of timesteps to display", type=int, default=int(2e6))
+parser.add_argument("-max", "--max-timesteps", help="Max number of timesteps to display", type=int, default=int(3e6))
 parser.add_argument("-min", "--min-timesteps", help="Min number of timesteps to keep a trial", type=int, default=-1)
 parser.add_argument("-o", "--output", help="Output filename (pickle file), where to save the post-processed data", type=str)
 parser.add_argument(
@@ -167,6 +167,8 @@ for env in args.env:  # noqa: C901
                 mean_per_eval = np.mean(evaluations, axis=-1)
                 # (n_eval,)
                 std_ = np.std(mean_per_eval, axis=-1)
+                min = np.min(mean_per_eval, axis=-1)
+                max = np.max(mean_per_eval, axis=-1)
                 # std: error:
                 std_error = std_ / np.sqrt(n_trials)
                 # Take last evaluation
@@ -199,7 +201,7 @@ for env in args.env:  # noqa: C901
                 }
 
                 plt.plot(timesteps / divider, mean_, label=f"{algo}-{args.labels[folder_idx]}", linewidth=3)
-                plt.fill_between(timesteps / divider, mean_ + std_error, mean_ - std_error, alpha=0.5)
+                plt.fill_between(timesteps / divider, max, min, alpha=0.5)
 
     plt.legend()
 

@@ -4,10 +4,10 @@ zinc-coating-v0:
   learning_rate: lin_2e-4
   batch_size: 64
   train_freq: 64
-  gradient_steps: 1
+  gradient_steps: 2
   target_update_interval: 1
   buffer_size: 500000
-  learning_starts: 5000
+  learning_starts: 10000
   noise_type: 'ornstein-uhlenbeck'
   noise_std: 0.3
   tau: 0.005
