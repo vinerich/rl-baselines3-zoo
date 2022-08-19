@@ -22,7 +22,7 @@ parser.add_argument("--fontsize", help="Font size", type=int, default=14)
 parser.add_argument("-max", "--max-timesteps", help="Max number of timesteps to display", type=int)
 parser.add_argument("-x", "--x-axis", help="X-axis", choices=["steps", "episodes", "time"], type=str, default="steps")
 parser.add_argument("-y", "--y-axis", help="Y-axis", choices=["success", "reward", "length"], type=str, default="reward")
-parser.add_argument("-w", "--episode-window", help="Rolling window size", type=int, default=100)
+parser.add_argument("-w", "--episode-window", help="Rolling window size", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -71,6 +71,7 @@ plt.ylabel(y_label, fontsize=args.fontsize)
 for folder in dirs:
     try:
         data_frame = load_results(folder)
+        print(f"{data_frame}")
     except LoadMonitorResultsError:
         continue
     if args.max_timesteps is not None:
@@ -90,4 +91,6 @@ for folder in dirs:
 
 plt.legend()
 plt.tight_layout()
+print(f"Saving to " + log_path + "/fig.svg")
+plt.savefig(log_path + "/fig.svg")
 plt.show()

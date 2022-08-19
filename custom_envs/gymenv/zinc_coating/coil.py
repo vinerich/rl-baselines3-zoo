@@ -12,11 +12,11 @@ class Coil():
             type (int, optional): Coil type. Varies the coating target and characteristics. Range 0-29. Defaults to 0.
             length (int, optional): Coil length. Defaults to 100.
         """
-        if(type < 30 and type >= 0):
+        if(type < 6 and type >= 0):
             self.type = type
         else:
             raise ValueError(
-                "Coil type should be in the range of 0 to 29. Got: " + type)
+                "Coil type should be in the range of 0 to 5. Got: " + type)
         self.max_length = length
         self.length = length
         self.started = False
@@ -66,7 +66,7 @@ class Coil():
             int: Coating target. Varies between 40 and 60.
         """
         if(self.rand_target):
-            return math.floor(self.type / 3) * 2 + 40.0  # [40, 58]
+            return self.type * 3 + 40.0  # [40, 58]
         else:
             return 40.0
 
@@ -77,6 +77,6 @@ class Coil():
             float: Coating characteristic. How much zinc bonds with the coil. Varies between 0.6 and 1.0.
         """
         if(self.rand_characteristic):
-            return 1.0 - self.type % 3 * 0.2  # [0.6, 1.0]
+            return 1.0 - self.type * 0.1  # [0.6, 1.0]
         else:
             return 1.0

@@ -66,3 +66,13 @@ register(
     id='zinc-coating-v0',
     entry_point='custom_envs.gymenv.zinc_coating_environment:ZincCoatingV0',
 )
+
+register(
+    id='zinc-coating-is-v0',
+    entry_point='custom_envs.gymenv.zinc_coating_environment_IS:ZincCoatingV0_IS',
+)
+
+register(
+    id='zinc-coating-po-v0',
+    entry_point='custom_envs.gymenv.zinc_coating_environment_PO:ZincCoatingV0_PO',
+)

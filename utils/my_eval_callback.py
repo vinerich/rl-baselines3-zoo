@@ -9,8 +9,7 @@ from matplotlib import pyplot as plt
 from stable_baselines3.common.callbacks import BaseCallback, EventCallback
 
 from stable_baselines3.common import base_class
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
-
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped, sync_envs_normalization
 
 def evaluate_policy(
     model: "base_class.BaseAlgorithm",
@@ -25,7 +24,11 @@ def evaluate_policy(
 ) -> Union[Tuple[float, float], Tuple[List[float], List[int]]]:
     """
     Runs policy for ``n_eval_episodes`` episodes and returns average reward.
-    This is made to work only with one env.
+    If a vector env is passed in, this divides the episodes to evaluate onto the
+    different elements of the vector env. This static division of work is done to
+    remove bias. See https://github.com/DLR-RM/stable-baselines3/issues/402 for more
+    details and discussion.
+
     .. note::
         If environment has not been wrapped with ``Monitor`` wrapper, reward and
         episode lengths are counted as it appears with ``env.step`` calls. If
@@ -33,9 +36,9 @@ def evaluate_policy(
         (e.g. reward scaling, early episode reset), these will affect the evaluation
         results as well. You can avoid this by wrapping environment with ``Monitor``
         wrapper before anything else.
+
     :param model: The RL agent you want to evaluate.
-    :param env: The gym environment. In the case of a ``VecEnv``
-        this must contain only one environment.
+    :param env: The gym environment or ``VecEnv`` environment.
     :param n_eval_episodes: Number of episode to evaluate the agent
     :param deterministic: Whether to use deterministic or stochastic actions
     :param render: Whether to render the environment or not
@@ -53,67 +56,87 @@ def evaluate_policy(
         (in number of steps).
     """
     is_monitor_wrapped = False
-    # # Avoid circular import
-    # from stable_baselines3.common.env_util import is_wrapped
-    # from stable_baselines3.common.monitor import Monitor
+    # Avoid circular import
+    from stable_baselines3.common.monitor import Monitor
 
-    # if isinstance(env, VecEnv):
-    #     assert env.num_envs == 1, "You must pass only one environment when using this function"
-    #     is_monitor_wrapped = is_vecenv_wrapped(env, VecMonitor) or env.env_is_wrapped(Monitor)[0]
-    # else:
-    #     is_monitor_wrapped = is_wrapped(env, Monitor)
+    if not isinstance(env, VecEnv):
+        env = DummyVecEnv([lambda: env])
 
-    # if not is_monitor_wrapped and warn:
-    #     warnings.warn(
-    #         "Evaluation environment is not wrapped with a ``Monitor`` wrapper. "
-    #         "This may result in reporting modified episode lengths and rewards, if other wrappers happen to modify these. "
-    #         "Consider wrapping environment first with ``Monitor`` wrapper.",
-    #         UserWarning,
-    #     )
+    is_monitor_wrapped = is_vecenv_wrapped(env, VecMonitor) or env.env_is_wrapped(Monitor)[0]
 
-    episode_rewards, episode_lows, episode_highs, episode_lengths = [], [], [], []
-    not_reseted = True
-    while len(episode_rewards) < n_eval_episodes:
-        # Number of loops here might differ from true episodes
-        # played, if underlying wrappers modify episode lengths.
-        # Avoid double reset, as VecEnv are reset automatically.
-        if not isinstance(env, VecEnv) or not_reseted:
-            obs = env.reset()
-            not_reseted = False
-        done, state = False, None
-        episode_reward = 0.0
-        episode_low = 0
-        episode_high = 0
-        episode_length = 0
-        while not done:
-            action, state = model.predict(obs, state=state, deterministic=deterministic)
-            obs, reward, done, info = env.step(action)
-            episode_reward += reward
-            if callback is not None:
-                callback(locals(), globals())
-            episode_length += 1
-            if render:
-                env.render()
+    if not is_monitor_wrapped and warn:
+        warnings.warn(
+            "Evaluation environment is not wrapped with a ``Monitor`` wrapper. "
+            "This may result in reporting modified episode lengths and rewards, if other wrappers happen to modify these. "
+            "Consider wrapping environment first with ``Monitor`` wrapper.",
+            UserWarning,
+        )
 
-            episode_low += 1 if reward == -100 else 0
-            episode_high += 1 if reward == -10 else 0
+    n_envs = env.num_envs
+    episode_rewards = []
+    episode_lengths = []
+    episode_lows = []
+    episode_highs = []
 
-        if is_monitor_wrapped:
-            # Do not trust "done" with episode endings.
-            # Remove vecenv stacking (if any)
-            if isinstance(env, VecEnv):
-                info = info[0]
-            if "episode" in info.keys():
-                # Monitor wrapper includes "episode" key in info if environment
-                # has been wrapped with it. Use those rewards instead.
-                episode_rewards.append(info["episode"]["r"])
-                episode_lengths.append(info["episode"]["l"])
-                # episode_dips_below_0.append(info["episode"]["d"])
-        else:
-            episode_rewards.append(episode_reward)
-            episode_lengths.append(episode_length)
-            episode_lows.append(episode_low)
-            episode_highs.append(episode_high)
+    episode_counts = np.zeros(n_envs, dtype="int")
+    # Divides episodes among different sub environments in the vector as evenly as possible
+    episode_count_targets = np.array([(n_eval_episodes + i) // n_envs for i in range(n_envs)], dtype="int")
+
+    current_rewards = np.zeros(n_envs)
+    current_lengths = np.zeros(n_envs, dtype="int")
+    current_lows = np.zeros(n_envs, dtype="int")
+    current_highs = np.zeros(n_envs, dtype="int")
+    observations = env.reset()
+    states = None
+    episode_starts = np.ones((env.num_envs,), dtype=bool)
+    while (episode_counts < episode_count_targets).any():
+        actions, states = model.predict(observations, state=states, episode_start=episode_starts, deterministic=deterministic)
+        observations, rewards, dones, infos = env.step(actions)
+        current_rewards += rewards
+        current_lengths += 1
+        for i in range(n_envs):
+            if episode_counts[i] < episode_count_targets[i]:
+
+                # unpack values so that the callback can access the local variables
+                reward = rewards[i]
+                done = dones[i]
+                info = infos[i]
+                episode_starts[i] = done
+
+                current_lows[i] += 1 if reward == -2 else 0
+                current_highs[i] += 1 if reward == -1 else 0
+
+                if callback is not None:
+                    callback(locals(), globals())
+
+                if dones[i]:
+                    if is_monitor_wrapped:
+                        # Atari wrapper can send a "done" signal when
+                        # the agent loses a life, but it does not correspond
+                        # to the true end of episode
+                        if "episode" in info.keys():
+                            # Do not trust "done" with episode endings.
+                            # Monitor wrapper includes "episode" key in info if environment
+                            # has been wrapped with it. Use those rewards instead.
+                            episode_rewards.append(info["episode"]["r"])
+                            episode_lengths.append(info["episode"]["l"])
+                            episode_lows.append(current_lows[i])
+                            episode_highs.append(current_highs[i])
+                            # Only increment at the real end of an episode
+                            episode_counts[i] += 1
+                    else:
+                        episode_rewards.append(current_rewards[i])
+                        episode_lengths.append(current_lengths[i])
+                        episode_lows.append(current_lows[i])
+                        episode_highs.append(current_highs[i])
+                        episode_counts[i] += 1
+                    current_rewards[i] = 0
+                    current_lengths[i] = 0
+                    current_lows[i] = 0
+                    current_highs[i] = 0
+
+        if render:
+            env.render()
 
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
@@ -122,9 +145,6 @@ def evaluate_policy(
     if return_episode_rewards:
         return episode_rewards, episode_lengths, episode_lows, episode_highs
     return mean_reward, std_reward
-
-# User-defined function to pass to map()
-# function as the first argument
 
 
 def getLength(iterable):
@@ -244,6 +264,9 @@ class MyEvalCallback(EventCallback):
                 callback=self._log_success_callback,
             )
 
+            # print("Evaluation Callback hit")
+            # print(f"Rewards: {episode_rewards}")
+
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
                 self.evaluations_results.append(episode_rewards)
@@ -251,6 +274,7 @@ class MyEvalCallback(EventCallback):
                 self.evaluation_lows.append(episode_lows)
                 self.evaluation_highs.append(episode_highs)
 
+                # print(f"Appended: {self.evaluations_results}")
                 kwargs = {}
                 # Save success log if present
                 if len(self._is_success_buffer) > 0:

@@ -59,6 +59,7 @@ for env in args.env:  # noqa: C901
         for folder_idx, exp_folder in enumerate(args.exp_folders):
 
             log_path = os.path.join(exp_folder, algo.lower())
+            print(f"Checking {log_path}")
 
             if not os.path.isdir(log_path):
                 continue
@@ -70,12 +71,14 @@ for env in args.env:  # noqa: C901
                 for d in os.listdir(log_path)
                 if (env in d and os.path.isdir(os.path.join(log_path, d)))
             ]
+            print(f"Found {dirs}")
 
             max_len = 0
             merged_timesteps, merged_results = [], []
             last_eval = []
             timesteps = np.empty(0)
             for _, dir_ in enumerate(dirs):
+                print(f"Evaluating {os.path.join(dir_, 'evaluations.npz')}")
                 try:
                     log = np.load(os.path.join(dir_, "evaluations.npz"))
                 except FileNotFoundError:
@@ -242,5 +245,6 @@ if args.output is not None:
     with open(f"{args.output}.pkl", "wb") as file_handler:
         pickle.dump(post_processed_results, file_handler)
 
+plt.savefig(f"{args.exp_folders[0]}_{args.env[0]}_{args.algos[0]}_fig_all.svg")
 if not args.no_display:
     plt.show()

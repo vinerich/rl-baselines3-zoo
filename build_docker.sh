@@ -1,5 +1,6 @@
 PARENT=stablebaselines/stable-baselines3
-VERSION=1.1.0a5
+#VERSION=1.1.0a5
+VERSION=1.4.1a0
 
 TAG=0.1
 
@@ -10,4 +11,4 @@ else
   TAG="evaluation:${TAG}"
 fi
 
-docker build --build-arg PARENT_IMAGE=${PARENT} --build-arg USE_GPU=${USE_GPU} -t ${TAG}:${VERSION} . -f docker/Dockerfile
+docker build --build-arg PARENT_IMAGE=${PARENT} --build-arg USE_GPU=${USE_GPU} -t ${TAG} . -f ./Dockerfile

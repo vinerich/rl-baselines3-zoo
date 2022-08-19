@@ -9,23 +9,21 @@ from .zinc_coating.base import ZincCoatingBase as base
 class ZincCoatingV0(gym.Env):
     """Simple continous zinc coating environment"""
 
-    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, random_coating_targets=False, random_coil_characteristics=False, random_coil_lengths=False, random_coil_speed=False, coating_dist_mean=0.0, coating_dist_std=0.0, coating_dist_reward=False):
+    def __init__(self, steps_per_episode=5000, coating_reward_time_offset=0, random_coating_targets=True, random_coil_characteristics=True, random_coil_lengths=True, random_coil_speed=True):
         super(ZincCoatingV0, self).__init__()
 
         self.steps_per_episode = steps_per_episode
         self.action_space = spaces.Box(
             np.array([0]), np.array([700]), dtype=np.float32)
+
         self.observation_space = spaces.Box(
-            low=0, high=1, shape=(39,), dtype=np.float32)
+            low=0, high=1, shape=(14,), dtype=np.float32)
         self.base = base(
             coating_reward_time_offset=coating_reward_time_offset,
             random_coating_targets=random_coating_targets,
             random_coil_characteristics=random_coil_characteristics,
             random_coil_lengths=random_coil_lengths,
             random_coil_speed=random_coil_speed,
-            coating_dist_mean=coating_dist_mean,
-            coating_dist_std=coating_dist_std,
-            coating_dist_reward=coating_dist_reward,
         )
         self.seed()
 
@@ -43,7 +41,6 @@ class ZincCoatingV0(gym.Env):
             self.done = False
 
         observation, reward, zinc_coating_real = self.base.step(nozzle_pressure[0])
-
         return self._transform_observation(observation), reward, self.done, {"coating": zinc_coating_real}
 
     def reset(self):
@@ -59,13 +56,12 @@ class ZincCoatingV0(gym.Env):
         coating_delta = observation.zinc_coating - observation.current_coating_target
         return ((observation.coil_speed - 1.3) / 2,
                 (observation.current_coating_target - 8) / 202,
-                (observation.next_coating_target - 8) / 202,
                 (observation.zinc_coating - 8) / 202,
                 (observation.nozzle_pressure / 700),
                 (coating_delta + 50) / 220,
                 (1 if coating_delta < 0 else 0),
                 (1 if coating_delta >= 0 and coating_delta <= 20 else 0),
-                (1 if coating_delta > 20 else 0)) + one_hot_encode(observation.next_coil_type if observation.coil_switch_next_tick else observation.current_coil_type, 30)
+                (1 if coating_delta > 20 else 0)) + one_hot_encode(observation.next_coil_type if observation.coil_switch_next_tick else observation.current_coil_type, 6)
 
 
 def one_hot_encode(to_encode, discrete_states):

@@ -2,7 +2,7 @@
 
 PARENT=stablebaselines/stable-baselines3
 
-TAG=stablebaselines/rl-baselines3-zoo
+TAG=master_evaluation
 VERSION=1.4.1a0
 
 if [[ ${USE_GPU} == "True" ]]; then
@@ -12,7 +12,7 @@ else
   TAG="${TAG}-cpu"
 fi
 
-docker build --build-arg PARENT_IMAGE=${PARENT} --build-arg USE_GPU=${USE_GPU} -t ${TAG}:${VERSION} . -f docker/Dockerfile
+docker build --build-arg PARENT_IMAGE=${PARENT} --build-arg USE_GPU=${USE_GPU} -t ${TAG}:${VERSION} . -f ./Dockerfile
 docker tag ${TAG}:${VERSION} ${TAG}:latest
 
 if [[ ${RELEASE} == "True" ]]; then
