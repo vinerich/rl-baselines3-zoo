@@ -60,19 +60,8 @@ for env_id in MaskVelocityWrapper.velocity_indices.keys():
         id=f"{name}NoVel-v{version}",
         entry_point=create_no_vel_env(env_id),
     )
-from gym.envs.registration import register
 
 register(
     id='zinc-coating-v0',
-    entry_point='custom_envs.gymenv.zinc_coating_environment:ZincCoatingV0',
-)
-
-register(
-    id='zinc-coating-is-v0',
-    entry_point='custom_envs.gymenv.zinc_coating_environment_IS:ZincCoatingV0_IS',
-)
-
-register(
-    id='zinc-coating-po-v0',
-    entry_point='custom_envs.gymenv.zinc_coating_environment_PO:ZincCoatingV0_PO',
+    entry_point='zinc_coating.zinc_coating_environment:ZincCoatingV0',
 )

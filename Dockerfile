@@ -21,6 +21,8 @@ RUN \
 # and create empty video files
 # RUN pip install gym==0.17.3
 
+RUN pip install git+https://github.com/vinerich/zinc-coating-gym-env.git
+
 ENV PATH=$VENV/bin:$PATH
 
 WORKDIR /root/code
