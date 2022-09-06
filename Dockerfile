@@ -29,4 +29,6 @@ WORKDIR /root/code
 COPY ./ ./
 
 RUN chmod +x ./run/hyperparameters_redis.sh
-CMD /root/code/run/hyperparameters_redis.sh
+CMD ./suite.sh
+
+RUN chmod +x ./suite.sh
