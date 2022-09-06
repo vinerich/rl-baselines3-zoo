@@ -17,7 +17,6 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecFrameStack, VecNormalize
 
-from custom_algos.dcac.rlrd.dcac import Agent as DCAC
 # from custom_algos.mpo.mpo import MPO
 # from custom_algos.d3pg.d3pg import D3PG
 
@@ -39,7 +38,6 @@ ALGOS = {
     "ppo_lstm": RecurrentPPO,
     # "mpo": MPO,
     # "d3pg": D3PG
-    "dcac": DCAC,
 }
 
 

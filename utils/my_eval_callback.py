@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
+import pandas as pd
 import optuna
 from matplotlib import pyplot as plt
 from stable_baselines3.common.callbacks import BaseCallback, EventCallback
@@ -211,9 +212,12 @@ class MyEvalCallback(EventCallback):
         self.evaluations_length = []
         self.evaluation_lows = []
         self.evaluation_highs = []
+        self.training_times = []
         # For computing success rate
         self._is_success_buffer = []
         self.evaluations_successes = []
+        self.t0 = None
+        self.time_set = False
 
     def _init_callback(self) -> None:
         # Does not work in some corner cases, where the wrapper is not the same
@@ -246,7 +250,18 @@ class MyEvalCallback(EventCallback):
 
     def _on_step(self) -> bool:
 
+        if not self.time_set:
+            self.t0 = pd.Timestamp.utcnow()
+            self.time_set = True
+
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+
+            if len(self.training_times):
+                self.training_times.append(self.training_times[-1] + (pd.Timestamp.utcnow() - self.t0).total_seconds())
+            else:
+                self.training_times.append((pd.Timestamp.utcnow() - self.t0).total_seconds())
+            self.time_set = False
+
             # Sync training and eval env if there is VecNormalize
             sync_envs_normalization(self.training_env, self.eval_env)
 
@@ -286,10 +301,12 @@ class MyEvalCallback(EventCallback):
                     timesteps=self.evaluations_timesteps,
                     results=self.evaluations_results,
                     ep_lengths=self.evaluations_length,
-                    lows=self.evaluation_lows,
-                    highs=self.evaluation_highs,
+                    results_lows=self.evaluation_lows,
+                    results_highs=self.evaluation_highs,
+                    train_time=self.training_times,
                     **kwargs,
                 )
+                print(self.training_times)
                 # np.save(self.log_path + "_dips", self.evaluations_dips)
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
