@@ -306,7 +306,7 @@ class MyEvalCallback(EventCallback):
                     train_time=self.training_times,
                     **kwargs,
                 )
-                print(self.training_times)
+                # print(self.training_times)
                 # np.save(self.log_path + "_dips", self.evaluations_dips)
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
